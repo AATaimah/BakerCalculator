@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 type PasswordContextType = {
   isAuthenticated: boolean
   authenticate: (password: string) => boolean
+  debugPassword: () => void // Added for debugging
 }
 
 // Get the password from environment variable
@@ -14,6 +15,7 @@ const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || ""
 const PasswordContext = createContext<PasswordContextType>({
   isAuthenticated: false,
   authenticate: () => false,
+  debugPassword: () => {}, // Added for debugging
 })
 
 export function PasswordProvider({ children }: { children: ReactNode }) {
@@ -25,11 +27,24 @@ export function PasswordProvider({ children }: { children: ReactNode }) {
     if (authStatus === "true") {
       setIsAuthenticated(true)
     }
+
+    // Log the environment variable on mount for debugging
+    console.log("Environment password length:", ADMIN_PASSWORD.length)
+    console.log(
+      "Environment password first/last char:",
+      ADMIN_PASSWORD.length > 0 ? `${ADMIN_PASSWORD[0]}...${ADMIN_PASSWORD[ADMIN_PASSWORD.length - 1]}` : "empty",
+    )
   }, [])
 
   const authenticate = (password: string) => {
+    // Log for debugging
+    console.log("Entered password:", password)
+    console.log("Entered password length:", password.length)
+    console.log("Environment password:", ADMIN_PASSWORD)
+    console.log("Password match:", password === ADMIN_PASSWORD)
+
     // Check if the entered password matches the admin password
-    const isValid = password === ADMIN_PASSWORD
+    const isValid = password === ADMIN_PASSWORD && ADMIN_PASSWORD !== ""
 
     if (isValid) {
       setIsAuthenticated(true)
@@ -39,7 +54,18 @@ export function PasswordProvider({ children }: { children: ReactNode }) {
     return isValid
   }
 
-  return <PasswordContext.Provider value={{ isAuthenticated, authenticate }}>{children}</PasswordContext.Provider>
+  // Debug function to check password in console
+  const debugPassword = () => {
+    console.log("Current admin password:", ADMIN_PASSWORD)
+    console.log("Password length:", ADMIN_PASSWORD.length)
+    console.log("Is password empty:", ADMIN_PASSWORD === "")
+  }
+
+  return (
+    <PasswordContext.Provider value={{ isAuthenticated, authenticate, debugPassword }}>
+      {children}
+    </PasswordContext.Provider>
+  )
 }
 
 export function usePassword() {
