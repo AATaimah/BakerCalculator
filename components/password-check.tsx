@@ -70,8 +70,9 @@ export function PasswordCheck({ children }: { children: React.ReactNode }) {
               <div className="bg-amber-50 p-3 rounded-md border border-amber-100 text-amber-800 text-sm flex items-start gap-2">
                 <Info className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p>If you're having trouble logging in:</p>
+                  <p>If you&apos;re having trouble logging in:</p>
                   <ul className="list-disc pl-5 mt-1">
+                    <li>If you&apos;re having trouble logging in:</li>
                     <li>Check that your environment variable is set correctly</li>
                     <li>Try clearing your browser cache</li>
                     <li>Check the browser console for debugging information</li>
