@@ -11,7 +11,6 @@ import { Loader2, RefreshCw, Calendar, DollarSign, AlertCircle, Trash2 } from "l
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
-import { PasswordCheck } from "@/components/password-check"
 
 export default function HistoryPage() {
   const { history, loading, error, fetchHistory, deleteHistoryEntry } = useHistory()
@@ -81,7 +80,7 @@ export default function HistoryPage() {
     return null
   }
 
-  const content = (
+  return (
     <PageLayout title="Tip History">
       <div className="max-w-7xl mx-auto">
         <div className="grid gap-6 md:grid-cols-[1fr,2fr]">
@@ -243,6 +242,4 @@ export default function HistoryPage() {
       />
     </PageLayout>
   )
-
-  return <PasswordCheck>{content}</PasswordCheck>
 }

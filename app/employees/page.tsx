@@ -11,7 +11,6 @@ import { PageLayout } from "@/components/layout/page-layout"
 import { useEmployees } from "@/hooks/use-employees"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { PasswordCheck } from "@/components/password-check"
 
 export default function EmployeesPage() {
   const [newEmployeeName, setNewEmployeeName] = useState("")
@@ -71,7 +70,7 @@ export default function EmployeesPage() {
     return null
   }
 
-  const content = (
+  return (
     <PageLayout title="Manage Employees">
       <div className="max-w-3xl mx-auto">
         <Card className="shadow-card border-t-4 border-t-baker-600 animate-fadeIn">
@@ -163,6 +162,4 @@ export default function EmployeesPage() {
       </div>
     </PageLayout>
   )
-
-  return <PasswordCheck>{content}</PasswordCheck>
 }

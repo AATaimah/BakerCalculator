@@ -1,6 +1,6 @@
 import type React from "react"
 import Link from "next/link"
-import { Home } from 'lucide-react'
+import { Home } from "lucide-react"
 
 interface PageLayoutProps {
   children: React.ReactNode
