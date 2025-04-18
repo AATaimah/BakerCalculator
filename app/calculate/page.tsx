@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -56,6 +56,81 @@ export default function CalculateTips() {
     setEmployeeHours((prev) => ({ ...prev, [employeeId]: value }))
   }
 
+  // Calculate employee tips with improved logic to ensure non-negative remainder
+  const calculateEmployeeTips = useCallback(
+    (netTips: number) => {
+      if (employees.length === 0) return
+
+      // Step 1: Calculate hours worked for each employee
+      const hoursWorked = employees.map((employee) => ({
+        employee: employee.name,
+        employeeId: employee.id,
+        hours: Number.parseFloat(employeeHours[employee.id] || "0") || 0,
+      }))
+
+      // Step 2: Calculate hours divided by 40 for each employee
+      const hoursDividedBy40 = hoursWorked.map((employee) => ({
+        employee: employee.employee,
+        employeeId: employee.employeeId,
+        hoursDividedBy40: employee.hours / 40,
+      }))
+
+      // Step 3: Calculate total hours divided by 40
+      const totalHoursDividedBy40 = hoursDividedBy40.reduce((total, current) => total + current.hoursDividedBy40, 0)
+
+      // If no hours worked, set all tips to 0
+      if (totalHoursDividedBy40 <= 0) {
+        const zeroTips = employees.map((emp) => ({
+          employee: emp.name,
+          employeeId: emp.id,
+          deservedTip: 0,
+        }))
+        setEmployeeTips(zeroTips)
+        setRemainder(netTips)
+        return
+      }
+
+      // Step 4: Calculate the initial ratio (rounded to nearest $5)
+      const initialRatio = Math.floor(netTips / totalHoursDividedBy40 / 5) * 5
+
+      // Step 5: Calculate initial deserved tips
+      const initialDeservedTips = hoursWorked.map((employee) => ({
+        employee: employee.employee,
+        employeeId: employee.employeeId,
+        deservedTip: Math.floor((initialRatio * employee.hours) / 40 / 5) * 5,
+      }))
+
+      // Step 6: Calculate the sum of initial deserved tips
+      const totalInitialTips = initialDeservedTips.reduce((acc, current) => acc + current.deservedTip, 0)
+
+      // Step 7: Calculate the initial remainder
+      const initialRemainder = netTips - totalInitialTips
+
+      // Step 8: If remainder is negative, adjust the tips
+      if (initialRemainder < 0) {
+        // Recalculate with a lower ratio to ensure positive remainder
+        const adjustedRatio = Math.floor((netTips * 0.95) / totalHoursDividedBy40 / 5) * 5
+
+        const adjustedDeservedTips = hoursWorked.map((employee) => ({
+          employee: employee.employee,
+          employeeId: employee.employeeId,
+          deservedTip: Math.floor((adjustedRatio * employee.hours) / 40 / 5) * 5,
+        }))
+
+        const totalAdjustedTips = adjustedDeservedTips.reduce((acc, current) => acc + current.deservedTip, 0)
+        const adjustedRemainder = netTips - totalAdjustedTips
+
+        setEmployeeTips(adjustedDeservedTips)
+        setRemainder(adjustedRemainder)
+      } else {
+        // If remainder is already positive, use the initial calculation
+        setEmployeeTips(initialDeservedTips)
+        setRemainder(initialRemainder)
+      }
+    },
+    [employeeHours, employees],
+  )
+
   // Calculate total tips
   useEffect(() => {
     if (!isMounted) return
@@ -80,79 +155,7 @@ export default function CalculateTips() {
     if (employees.length > 0) {
       calculateEmployeeTips(netTips)
     }
-  }, [denominations, employeeHours, employees, isMounted])
-
-  // Calculate employee tips with improved logic to ensure non-negative remainder
-  const calculateEmployeeTips = (netTips: number) => {
-    if (employees.length === 0) return
-
-    // Step 1: Calculate hours worked for each employee
-    const hoursWorked = employees.map((employee) => ({
-      employee: employee.name,
-      employeeId: employee.id,
-      hours: Number.parseFloat(employeeHours[employee.id] || "0") || 0,
-    }))
-
-    // Step 2: Calculate hours divided by 40 for each employee
-    const hoursDividedBy40 = hoursWorked.map((employee) => ({
-      employee: employee.employee,
-      employeeId: employee.employeeId,
-      hoursDividedBy40: employee.hours / 40,
-    }))
-
-    // Step 3: Calculate total hours divided by 40
-    const totalHoursDividedBy40 = hoursDividedBy40.reduce((total, current) => total + current.hoursDividedBy40, 0)
-
-    // If no hours worked, set all tips to 0
-    if (totalHoursDividedBy40 <= 0) {
-      const zeroTips = employees.map((emp) => ({
-        employee: emp.name,
-        employeeId: emp.id,
-        deservedTip: 0,
-      }))
-      setEmployeeTips(zeroTips)
-      setRemainder(netTips)
-      return
-    }
-
-    // Step 4: Calculate the initial ratio (rounded to nearest $5)
-    const initialRatio = Math.floor(netTips / totalHoursDividedBy40 / 5) * 5
-
-    // Step 5: Calculate initial deserved tips
-    const initialDeservedTips = hoursWorked.map((employee) => ({
-      employee: employee.employee,
-      employeeId: employee.employeeId,
-      deservedTip: Math.floor((initialRatio * employee.hours) / 40 / 5) * 5,
-    }))
-
-    // Step 6: Calculate the sum of initial deserved tips
-    const totalInitialTips = initialDeservedTips.reduce((acc, current) => acc + current.deservedTip, 0)
-
-    // Step 7: Calculate the initial remainder
-    const initialRemainder = netTips - totalInitialTips
-
-    // Step 8: If remainder is negative, adjust the tips
-    if (initialRemainder < 0) {
-      // Recalculate with a lower ratio to ensure positive remainder
-      const adjustedRatio = Math.floor((netTips * 0.95) / totalHoursDividedBy40 / 5) * 5
-
-      const adjustedDeservedTips = hoursWorked.map((employee) => ({
-        employee: employee.employee,
-        employeeId: employee.employeeId,
-        deservedTip: Math.floor((adjustedRatio * employee.hours) / 40 / 5) * 5,
-      }))
-
-      const totalAdjustedTips = adjustedDeservedTips.reduce((acc, current) => acc + current.deservedTip, 0)
-      const adjustedRemainder = netTips - totalAdjustedTips
-
-      setEmployeeTips(adjustedDeservedTips)
-      setRemainder(adjustedRemainder)
-    } else {
-      // If remainder is already positive, use the initial calculation
-      setEmployeeTips(initialDeservedTips)
-      setRemainder(initialRemainder)
-    }
-  }
+  }, [denominations, employeeHours, employees, isMounted, calculateEmployeeTips])
 
   // Validate form
   useEffect(() => {

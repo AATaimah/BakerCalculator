@@ -6,12 +6,11 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Trash2, Loader2, RefreshCw, UserPlus, AlertCircle } from 'lucide-react'
+import { Trash2, Loader2, RefreshCw, UserPlus, AlertCircle } from "lucide-react"
 import { PageLayout } from "@/components/layout/page-layout"
 import { useEmployees } from "@/hooks/use-employees"
 import { toast } from "sonner"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { SonnerProvider } from "@/components/sonner-provider"
 
 export default function EmployeesPage() {
   const [newEmployeeName, setNewEmployeeName] = useState("")
@@ -30,15 +29,15 @@ export default function EmployeesPage() {
 
     setIsAdding(true)
     try {
-        await addEmployee(newEmployeeName.trim())
-        setNewEmployeeName("")
-        toast.success("Employee added", {
-        description: `${newEmployeeName} has been added successfully.`
-    })
-    } catch (err) {
-        toast.error("Error", {
-        description: "Failed to add employee. Please try again."
-        })
+      await addEmployee(newEmployeeName.trim())
+      setNewEmployeeName("")
+      toast.success("Employee Added",{
+      description: `${newEmployeeName} has been added successfully.`,
+      })
+    } catch {
+      toast.error("Error",{
+        description: "Failed to add employee. Please try again.",
+      })
     } finally {
       setIsAdding(false)
     }
@@ -49,11 +48,11 @@ export default function EmployeesPage() {
 
     try {
       await removeEmployee(id)
-      toast.success("Employee removed", {
+      toast.success("Employee Removed",{
         description: `${name} has been removed successfully.`,
       })
-    } catch (err) {
-      toast.error("Error", {
+    } catch {
+      toast.error("Error",{
         description: "Failed to remove employee. Please try again.",
       })
     }
@@ -61,7 +60,7 @@ export default function EmployeesPage() {
 
   const handleRefresh = () => {
     fetchEmployees()
-    toast.success("Employee List Refereshed",{
+    toast.success("Refreshed",{
       description: "Employee list has been refreshed.",
     })
   }
