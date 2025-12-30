@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageLayout } from "@/components/layout/page-layout"
 import { useHistory, type TipHistory } from "@/hooks/use-history"
-import { Loader2, RefreshCw, Calendar, DollarSign, AlertCircle, Trash2 } from "lucide-react"
+import { Loader2, Calendar, DollarSign, AlertCircle, Trash2 } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { toast } from "sonner"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
@@ -24,13 +24,6 @@ export default function HistoryPage() {
   useEffect(() => {
     setIsMounted(true)
   }, [])
-
-  const handleRefresh = () => {
-    fetchHistory()
-    toast.success("Refreshed", {
-      description: "History list has been refreshed.",
-    })
-  }
 
   const formatDate = (date: Date) => {
     return new Intl.DateTimeFormat("en-US", {
