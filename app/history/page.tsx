@@ -83,23 +83,12 @@ export default function HistoryPage() {
   return (
     <PageLayout title="Tip History">
       <div className="max-w-7xl mx-auto">
-        <div className="grid gap-6 md:grid-cols-[1fr,2fr]">
-          {/* History List */}
+        <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 items-start">
+          {/* History List (left) */}
           <Card className="shadow-card border-t-4 border-t-baker-600 animate-fadeIn">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-2xl text-baker-800">Tip History</CardTitle>
-                <CardDescription>View past tip calculations</CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleRefresh}
-                title="Refresh history"
-                className="hover:bg-baker-50 hover:text-baker-700"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+            <CardHeader>
+              <CardTitle className="text-2xl text-baker-800">Tip History</CardTitle>
+              <CardDescription>View past tip calculations</CardDescription>
             </CardHeader>
             <CardContent>
               {error && (
@@ -158,7 +147,7 @@ export default function HistoryPage() {
             </CardContent>
           </Card>
 
-          {/* History Details */}
+          {/* History Details (right) */}
           <Card className="shadow-card border-t-4 border-t-baker-600 animate-fadeIn">
             <CardHeader>
               <CardTitle className="text-2xl text-baker-800">Tip Details</CardTitle>
@@ -200,7 +189,7 @@ export default function HistoryPage() {
 
                   <div>
                     <h3 className="font-medium text-lg mb-3">Employee Distribution</h3>
-                    <div className="overflow-x-auto rounded-md border">
+                    <div className="overflow-x-auto rounded-md border max-h-[480px]">
                       <table className="w-full border-collapse">
                         <thead>
                           <tr className="bg-baker-50 border-b">
