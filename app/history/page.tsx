@@ -13,7 +13,7 @@ import { toast } from "sonner"
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
 export default function HistoryPage() {
-  const { history, loading, error, fetchHistory, deleteHistoryEntry } = useHistory()
+  const { history, loading, error, deleteHistoryEntry } = useHistory()
   const [isMounted, setIsMounted] = useState(false)
   const [selectedEntry, setSelectedEntry] = useState<TipHistory | null>(null)
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
