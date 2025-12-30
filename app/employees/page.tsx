@@ -2,21 +2,39 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  type DragEndEvent,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core"
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Trash2, Loader2, RefreshCw, UserPlus, AlertCircle } from "lucide-react"
 import { PageLayout } from "@/components/layout/page-layout"
 import { useEmployees } from "@/hooks/use-employees"
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
+import { AlertCircle, GripVertical, Loader2, RefreshCw, Trash2, UserPlus } from "lucide-react"
 import { toast } from "sonner"
-import { Alert, AlertDescription } from "@/components/ui/alert"
 
 export default function EmployeesPage() {
   const [newEmployeeName, setNewEmployeeName] = useState("")
   const [isAdding, setIsAdding] = useState(false)
-  const { employees, loading, error, fetchEmployees, addEmployee, removeEmployee } = useEmployees()
+  const { employees, loading, error, fetchEmployees, addEmployee, removeEmployee, reorderEmployees } =
+    useEmployees()
   const [isMounted, setIsMounted] = useState(false)
+  const [confirmEmployee, setConfirmEmployee] = useState<{ id: string; name: string } | null>(null)
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 },
+    }),
+  )
 
   // Handle client-side rendering
   useEffect(() => {
@@ -25,14 +43,20 @@ export default function EmployeesPage() {
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newEmployeeName.trim()) return
+    const trimmedName = newEmployeeName.trim()
+    if (!trimmedName) {
+      toast.error("Missing name", {
+        description: "Enter a name before adding an employee.",
+      })
+      return
+    }
 
     setIsAdding(true)
     try {
-      await addEmployee(newEmployeeName.trim())
+      await addEmployee(trimmedName)
       setNewEmployeeName("")
       toast.success("Employee Added", {
-        description: `${newEmployeeName} has been added successfully.`,
+        description: `${trimmedName} has been added successfully.`,
       })
     } catch {
       toast.error("Error", {
@@ -44,7 +68,13 @@ export default function EmployeesPage() {
   }
 
   const handleRemoveEmployee = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to remove ${name}?`)) return
+    setConfirmEmployee({ id, name })
+  }
+
+  const confirmRemoveEmployee = async () => {
+    if (!confirmEmployee) return
+
+    const { id, name } = confirmEmployee
 
     try {
       await removeEmployee(id)
@@ -55,6 +85,8 @@ export default function EmployeesPage() {
       toast.error("Error", {
         description: "Failed to remove employee. Please try again.",
       })
+    } finally {
+      setConfirmEmployee(null)
     }
   }
 
@@ -63,6 +95,26 @@ export default function EmployeesPage() {
     toast.success("Refreshed", {
       description: "Employee list has been refreshed.",
     })
+  }
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const oldIndex = employees.findIndex((employee) => employee.id === active.id)
+    const newIndex = employees.findIndex((employee) => employee.id === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const reordered = arrayMove(employees, oldIndex, newIndex)
+    try {
+      await reorderEmployees(reordered)
+      toast.success("Employee order updated")
+    } catch (err) {
+      console.error(err)
+      toast.error("Could not update order", {
+        description: err instanceof Error ? err.message : String(err),
+      })
+    }
   }
 
   // Don't render anything on the server
@@ -77,7 +129,7 @@ export default function EmployeesPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-2xl text-baker-800">Employee Management</CardTitle>
-              <CardDescription>Add or remove employees from the system</CardDescription>
+              <CardDescription>Add, remove, or drag to reorder employees</CardDescription>
             </div>
             <Button
               variant="outline"
@@ -102,7 +154,7 @@ export default function EmployeesPage() {
               </div>
               <Button
                 type="submit"
-                disabled={isAdding || !newEmployeeName.trim()}
+                disabled={isAdding}
                 className="bg-baker-700 hover:bg-baker-800 flex gap-2 items-center"
               >
                 {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />}
@@ -132,34 +184,81 @@ export default function EmployeesPage() {
             ) : (
               <div className="rounded-md border overflow-hidden">
                 <div className="bg-baker-50 py-3 px-4 text-sm font-medium text-baker-800 border-b">
-                  <div className="grid grid-cols-[1fr,auto] gap-4">
+                  <div className="grid grid-cols-[auto,1fr,auto] items-center gap-4">
+                    <div aria-hidden className="w-4" />
                     <div>Employee Name</div>
-                    <div>Actions</div>
                   </div>
                 </div>
-                <div className="divide-y">
-                  {employees.map((employee) => (
-                    <div
-                      key={employee.id}
-                      className="grid grid-cols-[1fr,auto] gap-4 py-3 px-4 items-center hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="font-medium">{employee.name}</div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveEmployee(employee.id, employee.name)}
-                        className="text-baker-700 hover:text-baker-800 hover:bg-baker-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                  <SortableContext items={employees.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+                    <div className="divide-y">
+                      {employees.map((employee) => (
+                        <SortableEmployeeRow
+                          key={employee.id}
+                          employee={employee}
+                          onRemove={() => handleRemoveEmployee(employee.id, employee.name)}
+                        />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               </div>
             )}
           </CardContent>
         </Card>
+        <ConfirmationDialog
+          open={!!confirmEmployee}
+          onOpenChange={(open) => {
+            if (!open) setConfirmEmployee(null)
+          }}
+          title="Remove employee"
+          description={`Are you sure you want to remove ${confirmEmployee?.name ?? "this employee"}?`}
+          onConfirm={confirmRemoveEmployee}
+          confirmText="Remove"
+          cancelText="Cancel"
+        />
       </div>
     </PageLayout>
+  )
+}
+
+function SortableEmployeeRow({
+  employee,
+  onRemove,
+}: {
+  employee: { id: string; name: string }
+  onRemove: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: employee.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 py-3 px-4 hover:bg-gray-50 transition-colors"
+    >
+      <button
+        className="text-gray-400 hover:text-baker-700 cursor-grab active:cursor-grabbing"
+        type="button"
+        aria-label={`Drag ${employee.name}`}
+        {...attributes}
+        {...listeners}
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <div className="font-medium flex-1">{employee.name}</div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={onRemove}
+        className="text-baker-700 hover:text-baker-800 hover:bg-baker-50"
+      >
+        <Trash2 className="h-4 w-4" />
+      </Button>
+    </div>
   )
 }

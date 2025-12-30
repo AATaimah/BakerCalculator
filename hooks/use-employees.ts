@@ -1,13 +1,24 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, query, getDocs, addDoc, deleteDoc, doc, orderBy } from "firebase/firestore"
+import {
+  collection,
+  query,
+  getDocs,
+  addDoc,
+  deleteDoc,
+  doc,
+  orderBy,
+  writeBatch,
+  limit,
+} from "firebase/firestore"
 import { db } from "@/firebase"
 
 export interface Employee {
   id: string
   name: string
   createdAt: Date
+  order: number
 }
 
 // Original employees from your code
@@ -52,14 +63,15 @@ export function useEmployees() {
 
         // Use a batch approach for better performance
         const batch = []
-        for (const name of originalEmployees) {
+        originalEmployees.forEach((name, index) => {
           batch.push(
             addDoc(collection(db, "employees"), {
               name,
               createdAt: new Date(),
+              order: index,
             }),
           )
-        }
+        })
 
         await Promise.all(batch)
         console.log("Successfully initialized with original employees")
@@ -79,18 +91,33 @@ export function useEmployees() {
     setLoading(true)
     try {
       console.log("Fetching employees from Firestore...")
-      const employeesQuery = query(collection(db, "employees"), orderBy("createdAt", "asc"))
+      const employeesQuery = query(collection(db, "employees"), orderBy("order", "asc"))
       const snapshot = await getDocs(employeesQuery)
 
-      const employeesList = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-      })) as Employee[]
+      let needsOrderMigration = false
+      const employeesList = snapshot.docs.map((doc, idx) => {
+        const data = doc.data()
+        if (data.order === undefined) needsOrderMigration = true
+        return {
+          id: doc.id,
+          ...data,
+          order: data.order ?? idx,
+          createdAt: data.createdAt?.toDate() || new Date(),
+        }
+      }) as Employee[]
 
       console.log(`Found ${employeesList.length} employees`)
       setEmployees(employeesList)
       setError(null)
+
+      if (needsOrderMigration) {
+        await reorderEmployees(
+          employeesList.map((employee, index) => ({
+            ...employee,
+            order: index,
+          })),
+        )
+      }
 
       // If no employees found and not initialized, initialize with original employees
       if (employeesList.length === 0 && !initialized) {
@@ -108,9 +135,15 @@ export function useEmployees() {
   // Add employee
   const addEmployee = async (name: string) => {
     try {
+      const nextOrderSnapshot = await getDocs(
+        query(collection(db, "employees"), orderBy("order", "desc"), limit(1)),
+      )
+      const nextOrder = nextOrderSnapshot.empty ? 0 : (nextOrderSnapshot.docs[0].data().order ?? 0) + 1
+
       const docRef = await addDoc(collection(db, "employees"), {
         name,
         createdAt: new Date(),
+        order: nextOrder,
       })
       
       // Refresh the employee list
@@ -120,6 +153,15 @@ export function useEmployees() {
       console.error("Error adding employee:", err)
       throw new Error("Failed to add employee")
     }
+  }
+
+  const reorderEmployees = async (ordered: Employee[]) => {
+    const batch = writeBatch(db)
+    ordered.forEach((employee, index) => {
+      batch.update(doc(db, "employees", employee.id), { order: index })
+    })
+    await batch.commit()
+    setEmployees(ordered)
   }
 
   // Remove employee
@@ -147,5 +189,6 @@ export function useEmployees() {
     fetchEmployees,
     addEmployee,
     removeEmployee,
+    reorderEmployees,
   }
 }
