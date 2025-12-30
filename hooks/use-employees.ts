@@ -61,19 +61,16 @@ export function useEmployees() {
         setInitialized(true)
         console.log("Initializing with original employees...")
 
-        // Use a batch approach for better performance
-        const batch = []
-        originalEmployees.forEach((name, index) => {
-          batch.push(
-            addDoc(collection(db, "employees"), {
-              name,
-              createdAt: new Date(),
-              order: index,
-            }),
-          )
-        })
+        // Seed originals concurrently
+        const seeds = originalEmployees.map((name, index) =>
+          addDoc(collection(db, "employees"), {
+            name,
+            createdAt: new Date(),
+            order: index,
+          }),
+        )
 
-        await Promise.all(batch)
+        await Promise.all(seeds)
         console.log("Successfully initialized with original employees")
 
         // Fetch again after initialization
