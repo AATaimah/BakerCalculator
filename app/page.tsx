@@ -90,7 +90,7 @@ export default function Home() {
               </div>
               <div className="bg-baker-50 p-4 rounded-lg border border-baker-100">
                 <h3 className="font-medium text-baker-800 mb-2">Cloud Storage</h3>
-                <p className="text-sm text-gray-600">Data securely stored in the cloud for easy access</p>
+                <p className="text-sm text-gray-600">Data securely stored for easy access</p>
               </div>
             </div>
           </div>
@@ -100,7 +100,6 @@ export default function Home() {
       <footer className="bg-gradient-to-r from-baker-800 to-baker-900 text-white p-6">
         <div className="max-w-4xl mx-auto text-center">
           <p className="mb-2">&copy; {new Date().getFullYear()} Anas Taimah. All Rights Reserved.</p>
-          <p className="text-sm text-baker-200">The Baker Tip Calculator - Making tip distribution fair and simple</p>
         </div>
       </footer>
     </div>
