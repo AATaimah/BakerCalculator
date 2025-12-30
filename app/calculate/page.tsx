@@ -14,6 +14,16 @@ import { useHistory } from "@/hooks/use-history"
 import { toast } from "sonner"
 import { PageLayout } from "@/components/layout/page-layout"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function CalculateTips() {
   const router = useRouter()
@@ -21,6 +31,8 @@ export default function CalculateTips() {
   const { saveTipCalculation } = useHistory()
   const [isMounted, setIsMounted] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [previewRows, setPreviewRows] = useState<{ id: string; name: string; hours: number; tip: number }[]>([])
 
   const [denominations, setDenominations] = useState({
     fives: "",
@@ -38,8 +50,6 @@ export default function CalculateTips() {
   const [employeeHours, setEmployeeHours] = useState<Record<string, string>>({})
   const [employeeTips, setEmployeeTips] = useState<{ employee: string; employeeId: string; deservedTip: number }[]>([])
   const [remainder, setRemainder] = useState(0)
-  const [isFormValid, setIsFormValid] = useState(false)
-
   // Handle client-side rendering
   useEffect(() => {
     setIsMounted(true)
@@ -157,40 +167,34 @@ export default function CalculateTips() {
     }
   }, [denominations, employeeHours, employees, isMounted, calculateEmployeeTips])
 
-  // Validate form
-  useEffect(() => {
-    if (!isMounted || employees.length === 0) return
-
-    const isDenominationsValid = Object.values(denominations).every(
-      (value) => value !== "" && !isNaN(Number.parseFloat(value)),
-    )
-
-    const isHoursValid = employees.every((employee) => {
-      const hours = employeeHours[employee.id]
-      return hours !== undefined && hours !== "" && !isNaN(Number.parseFloat(hours)) && Number.parseFloat(hours) < 150
+  const openConfirm = () => {
+    const rows = employees.map((employee) => {
+      const hours = Number.parseFloat(employeeHours[employee.id] || "0") || 0
+      const tip = employeeTips.find((dt) => dt.employeeId === employee.id)?.deservedTip || 0
+      return { id: employee.id, name: employee.name, hours, tip }
     })
 
-    setIsFormValid(isDenominationsValid && isHoursValid)
-  }, [denominations, employeeHours, employees, isMounted])
-
-  // Save and redirect
-  const saveAndRedirect = async () => {
-    if (!isFormValid) {
-      toast.error("Validation Error", {
-        description: "Please fill in all fields correctly.",
+    const invalid = rows.find((row) => !Number.isFinite(row.hours) || row.hours < 0)
+    if (invalid) {
+      toast.error("Invalid hours", {
+        description: `${invalid.name} has an invalid hour entry. Hours must be 0–149.`,
       })
       return
     }
 
+    setPreviewRows(rows)
+    setConfirmOpen(true)
+  }
+
+  // Save and redirect after confirmation
+  const saveAndRedirect = async () => {
     setIsSaving(true)
 
     try {
       const employeeData: Record<string, { hours: number; deservedTip: number }> = {}
 
-      employees.forEach((employee) => {
-        const hours = Number.parseFloat(employeeHours[employee.id] || "0") || 0
-        const deservedTipAmount = employeeTips.find((dt) => dt.employeeId === employee.id)?.deservedTip || 0
-        employeeData[employee.name] = { hours, deservedTip: deservedTipAmount }
+      previewRows.forEach((row) => {
+        employeeData[row.name] = { hours: row.hours, deservedTip: row.tip }
       })
 
       const tipData = {
@@ -216,6 +220,7 @@ export default function CalculateTips() {
       console.error("Error saving tip calculation:", error)
     } finally {
       setIsSaving(false)
+      setConfirmOpen(false)
     }
   }
 
@@ -461,8 +466,8 @@ export default function CalculateTips() {
 
       <div className="fixed bottom-16 right-6">
         <Button
-          onClick={saveAndRedirect}
-          disabled={!isFormValid || isSaving}
+          onClick={openConfirm}
+          disabled={isSaving}
           className="rounded-full bg-baker-700 hover:bg-baker-800 shadow-md flex items-center gap-2 px-6"
         >
           {isSaving ? (
@@ -478,6 +483,47 @@ export default function CalculateTips() {
           )}
         </Button>
       </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm tip distribution</AlertDialogTitle>
+            <AlertDialogDescription>
+              Review hours and payouts before saving.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-72 overflow-y-auto rounded-md border">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-baker-50 border-b">
+                <tr>
+                  <th className="text-left p-2 font-medium text-baker-800">Employee</th>
+                  <th className="text-right p-2 font-medium text-baker-800">Hours</th>
+                  <th className="text-right p-2 font-medium text-baker-800">Tip</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {previewRows.map((row) => (
+                  <tr key={row.id} className="hover:bg-gray-50">
+                    <td className="p-2">{row.name}</td>
+                    <td className="p-2 text-right font-mono">{row.hours.toFixed(2)}</td>
+                    <td className="p-2 text-right font-mono">${row.tip.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSaving}>Go back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={saveAndRedirect}
+              disabled={isSaving}
+              className="bg-baker-700 hover:bg-baker-800"
+            >
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   )
 }
